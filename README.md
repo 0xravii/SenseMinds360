@@ -1,8 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SenseMinds 360
+
+SenseMinds 360 is a comprehensive monitoring and management dashboard for AI systems, providing real-time insights into system status, alerts, logs, and an interactive AI assistant.
 
 ## Getting Started
 
-First, run the development server:
+To get started with SenseMinds 360, follow these steps:
+
+### 1. Clone the repository
+
+```bash
+git clone <repository-url>
+cd sense-minds-360
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+# or
+bun install
+```
+
+### 3. Environment Variables
+
+Create a `.env.local` file in the root of the project based on the `.env.example` (if available) or the following structure:
+
+```
+NEXT_PUBLIC_API_MOCK_MODE=true
+NEXT_PUBLIC_REALTIME_MOCK_MODE=true
+```
+
+- `NEXT_PUBLIC_API_MOCK_MODE`: Set to `true` to use mock data for API calls. Set to `false` to connect to a real backend (requires further configuration).
+- `NEXT_PUBLIC_REALTIME_MOCK_MODE`: Set to `true` to simulate real-time events. Set to `false` to connect to a real-time service (requires further configuration).
+
+### 4. Run the Development Server
 
 ```bash
 npm run dev
@@ -16,9 +51,13 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `src/app`: Next.js App Router pages (Home, Analyzer, Logs, Settings).
+- `src/components`: Reusable UI components, including `shadcn/ui` components and custom components like `AppShell`, `DashboardCard`, `AlertsPanel`, etc.
+- `src/lib`: Utility functions.
+- `src/services`: API client and real-time service for data fetching and event handling.
+- `src/types`: TypeScript type definitions for data models.
 
 ## Learn More
 

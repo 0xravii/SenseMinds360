@@ -1,0 +1,128 @@
+Use your VM IP: 34.28.155.240 (HTTP on port 80 via Nginx).
+
+Health & Meta
+
+GET http://34.28.155.240/health
+GET http://34.28.155.240/ready
+GET http://34.28.155.240/metrics
+
+GET http://34.28.155.240/api/v1/system/health
+GET http://34.28.155.240/api/v1/system/healthcheck
+GET http://34.28.155.240/api/v1/system/info
+
+Sensors
+
+GET http://34.28.155.240/api/v1/sensors/current
+GET http://34.28.155.240/api/v1/sensors/history/24
+
+Replace 24 with hours (int).
+
+ML (Model outputs)
+
+GET http://34.28.155.240/api/v1/ml/current
+GET http://34.28.155.240/api/v1/ml/history/24
+
+Patterns & Stats
+
+GET http://34.28.155.240/api/v1/patterns/current
+GET http://34.28.155.240/api/v1/patterns/statistics
+
+Pipeline
+
+POST http://34.28.155.240/api/v1/pipeline/execute
+Body (JSON, minimal):
+
+POST /api/v1/pipeline/execute HTTP/1.1
+Host: 34.28.155.240
+Content-Type: application/json
+
+{
+  "mode": "auto"
+}
+
+
+GET http://34.28.155.240/api/v1/pipeline/status
+GET http://34.28.155.240/api/v1/pipeline/notifications
+GET http://34.28.155.240/api/v1/pipeline/history
+
+Alerts
+
+GET http://34.28.155.240/api/v1/alerts/recent
+GET http://34.28.155.240/api/v1/alerts/email-alerts
+GET http://34.28.155.240/api/v1/alerts/history
+
+SHAP (Explainability)
+
+GET http://34.28.155.240/api/v1/shap/current
+GET http://34.28.155.240/api/v1/shap/history
+
+Analytics
+
+GET http://34.28.155.240/api/v1/analytics/dashboard
+GET http://34.28.155.240/api/v1/analytics/trends/24
+
+Chat (LLM)
+
+POST http://34.28.155.240/api/v1/chat/sessions
+
+POST /api/v1/chat/sessions HTTP/1.1
+Host: 34.28.155.240
+Content-Type: application/json
+
+{ "session_id": "demo" }
+
+
+POST http://34.28.155.240/api/v1/chat/text
+
+POST /api/v1/chat/text HTTP/1.1
+Host: 34.28.155.240
+Content-Type: application/json
+
+{
+  "session_id": "demo",
+  "message": "Summarize latest sensor status"
+}
+
+
+POST http://34.28.155.240/api/v1/chat/voice
+multipart/form-data fields: audio (file), lang (e.g., en-IN), session_id
+
+POST /api/v1/chat/voice HTTP/1.1
+Host: 34.28.155.240
+Content-Type: multipart/form-data; boundary=BOUNDARY
+
+--BOUNDARY
+Content-Disposition: form-data; name="session_id"
+
+demo
+--BOUNDARY
+Content-Disposition: form-data; name="lang"
+
+en-IN
+--BOUNDARY
+Content-Disposition: form-data; name="audio"; filename="sample.wav"
+Content-Type: audio/wav
+
+...binary wav data...
+--BOUNDARY--
+
+
+GET http://34.28.155.240/api/v1/chat/sessions/<session_id>/history
+
+POST http://34.28.155.240/api/v1/chat/tts
+
+POST /api/v1/chat/tts HTTP/1.1
+Host: 34.28.155.240
+Content-Type: application/json
+
+{
+  "text": "System all green.",
+  "lang": "en-IN",
+  "voice": "default"
+}
+
+Test & Docs
+
+GET http://34.28.155.240/api/v1/test/voice
+GET http://34.28.155.240/api/v1/test/services
+GET http://34.28.155.240/api/v1/docs
