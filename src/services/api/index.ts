@@ -5,7 +5,7 @@ import { fallbackApiService } from './fallback-api';
 
 
 // SenseMinds 360 API Configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://34.28.155.240:7000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 
 // Response types for API endpoints
@@ -181,37 +181,22 @@ export const apiService = {
 
   getSystemMetrics: async (): Promise<{ cpuUsage: number; memoryUsage: number; servicesHealthy: number; servicesTotal: number; uptime: number; memoryUsageMB: number }> => {
     try {
-      // Use the configured API base URL with proxy support
-      const metricsUrl = 'http://34.28.155.240:7000/metrics';
-      const response = await fetch(metricsUrl);
-      const text = await response.text();
+      // Use local system health endpoint to get metrics
+      const response = await apiClient.get<any>('/system/health');
       
-      // Parse metrics from Prometheus format
-      const lines = text.split('\n');
-      const metrics = {
-        cpuUsage: 0, // CPU usage percentage (0% as no CPU metric available)
-        memoryUsage: 0, // Memory usage percentage
-        memoryUsageMB: 0, // Memory usage in MB
-        servicesHealthy: 0,
-        servicesTotal: 0,
-        uptime: 0
-      };
+      if (response && response.metrics) {
+        const metrics = {
+          cpuUsage: response.metrics.cpu_usage || 0,
+          memoryUsage: response.metrics.memory_usage || 0,
+          memoryUsageMB: (response.metrics.memory_usage * 8192) / 100 || 0, // Convert percentage to MB
+          servicesHealthy: Object.values(response.components || {}).filter((comp: any) => comp.status === 'operational').length,
+          servicesTotal: Object.keys(response.components || {}).length,
+          uptime: response.uptime || 0
+        };
+        return metrics;
+      }
       
-      lines.forEach(line => {
-        if (line.startsWith('senseminds_services_healthy')) {
-          metrics.servicesHealthy = parseInt(line.split(' ')[1]);
-        } else if (line.startsWith('senseminds_services_total')) {
-          metrics.servicesTotal = parseInt(line.split(' ')[1]);
-        } else if (line.startsWith('senseminds_memory_usage_mb')) {
-          metrics.memoryUsageMB = parseFloat(line.split(' ')[1]);
-          // Calculate memory usage percentage (assuming 8GB total system memory)
-          metrics.memoryUsage = Math.round((metrics.memoryUsageMB / 8192) * 100);
-        } else if (line.startsWith('senseminds_uptime_seconds')) {
-          metrics.uptime = parseFloat(line.split(' ')[1]);
-        }
-      });
-      
-      return metrics;
+      throw new Error('Invalid response format');
     } catch (error) {
       console.warn('Primary metrics API unavailable, using fallback');
       return await fallbackApiService.getSystemMetrics();
@@ -238,7 +223,14 @@ export const apiService = {
   getSensorHistory: (hours: number) => apiClient.get<SensorData[]>(`/sensors/history/${hours}`),
 
   // ML endpoints
-  getCurrentMLPredictions: () => apiClient.get<MLPrediction>('/ml/current'),
+  getCurrentMLPredictions: async () => {
+    try {
+      return await apiClient.get<MLPrediction>('/ml/current');
+    } catch (error) {
+      console.warn('Primary API unavailable, using fallback for ML predictions');
+      return await fallbackApiService.getCurrentMLPredictions();
+    }
+  },
   getMLHistory: (hours: number) => apiClient.get<MLPrediction[]>(`/ml/history/${hours}`),
 
   // Pattern endpoints

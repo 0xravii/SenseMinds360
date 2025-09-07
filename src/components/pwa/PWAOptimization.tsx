@@ -21,16 +21,23 @@ export function PWAOptimization({
         '/api/alerts/recent'
       ];
 
-      // Only preload in development or when explicitly enabled
-      if (process.env.NODE_ENV === 'development') {
-        preloadResources.forEach(resource => {
-          fetch(resource, { method: 'HEAD' }).catch(() => {
-            // Silently fail for preloading
-          });
-        });
-      } else {
-        console.log('PWA: Resource preloading disabled for production deployment');
-      }
+      // Disable API preloading to prevent interference with actual data fetching
+      console.log('PWA: API resource preloading disabled to prevent request conflicts');
+      
+      // Alternative: Use link preload instead of fetch for static resources only
+      const staticResources = [
+        '/favicon.ico',
+        '/manifest.json'
+      ];
+      
+      staticResources.forEach(resource => {
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.href = resource;
+        link.as = 'fetch';
+        link.crossOrigin = 'anonymous';
+        document.head.appendChild(link);
+      });
     }
 
     // Cache optimization

@@ -1,128 +1,386 @@
-Use your VM IP: 34.28.155.240 (HTTP on port 80 via Nginx).
+# SenseMinds 360 Fire Detection API Documentation
 
-Health & Meta
+## Base Information
+- **Base URL**: `http://34.28.155.240:7000`
+- **API Version**: v1
+- **API Prefix**: `/api/v1`
+- **Total Endpoints**: 37
+- **WebSocket URL**: `ws://34.28.155.240:7000/socket.io/`
 
-GET http://34.28.155.240/health
-GET http://34.28.155.240/ready
-GET http://34.28.155.240/metrics
+## System Endpoints
 
-GET http://34.28.155.240/api/v1/system/health
-GET http://34.28.155.240/api/v1/system/healthcheck
-GET http://34.28.155.240/api/v1/system/info
+### Health & Monitoring
+```bash
+# System health check
+GET /api/v1/system/health
 
-Sensors
+# System information
+GET /api/v1/system/info
 
-GET http://34.28.155.240/api/v1/sensors/current
-GET http://34.28.155.240/api/v1/sensors/history/24
+# Basic health (root level)
+GET /health
 
-Replace 24 with hours (int).
+# Readiness check
+GET /ready
 
-ML (Model outputs)
+# Prometheus metrics
+GET /metrics
+```
 
-GET http://34.28.155.240/api/v1/ml/current
-GET http://34.28.155.240/api/v1/ml/history/24
+## Sensor Data Endpoints
 
-Patterns & Stats
+### Current & Historical Data
+```bash
+# Get current sensor readings
+GET /api/v1/sensors/current
 
-GET http://34.28.155.240/api/v1/patterns/current
-GET http://34.28.155.240/api/v1/patterns/statistics
+# Get sensor history for specified hours
+GET /api/v1/sensors/history/{hours}
+# Example: GET /api/v1/sensors/history/24
+```
 
-Pipeline
+## Machine Learning Endpoints
 
-POST http://34.28.155.240/api/v1/pipeline/execute
-Body (JSON, minimal):
+### ML Analysis
+```bash
+# Get current ML analysis
+GET /api/v1/ml/current
 
-POST /api/v1/pipeline/execute HTTP/1.1
-Host: 34.28.155.240
+# Get ML analysis history
+GET /api/v1/ml/history/{hours}
+# Example: GET /api/v1/ml/history/24
+```
+
+## Pattern Detection Endpoints
+
+### Pattern Analysis
+```bash
+# Get current pattern analysis
+GET /api/v1/patterns/current
+
+# Get pattern detection statistics
+GET /api/v1/patterns/statistics
+```
+
+## Pipeline Execution Endpoints
+
+### Pipeline Management
+```bash
+# Execute pipeline manually
+POST /api/v1/pipeline/execute
+
+# Get pipeline status
+GET /api/v1/pipeline/status
+
+# Get notification summary
+GET /api/v1/pipeline/notifications
+
+# Get pipeline execution history
+GET /api/v1/pipeline/history?limit=10
+```
+
+## Alert System Endpoints
+
+### Alert Management
+```bash
+# Get recent alerts
+GET /api/v1/alerts/recent?hours=24&limit=50
+
+# Get email alerts (enriched with alert_type, top_factors)
+GET /api/v1/alerts/email-alerts
+
+# Get latest email alert
+GET /api/v1/alerts/email/latest
+
+# Get alerts history
+GET /api/v1/alerts/history?days=7&severity=Critical
+# severity options: Warning, Critical, Emergency
+```
+
+## SHAP (Explainable AI) Endpoints
+
+### SHAP Analysis
+```bash
+# Get current SHAP analysis
+GET /api/v1/shap/current
+
+# Get SHAP analysis history
+GET /api/v1/shap/history?days=7
+```
+
+## Analytics Endpoints
+
+### Dashboard & Trends
+```bash
+# Get dashboard analytics
+GET /api/v1/analytics/dashboard
+
+# Get trend analysis
+GET /api/v1/analytics/trends/{hours}
+# Example: GET /api/v1/analytics/trends/24
+```
+
+## Chatbot Endpoints
+
+### Session Management
+```bash
+# Create/get chat session
+POST /api/v1/chat/sessions
 Content-Type: application/json
-
 {
-  "mode": "auto"
+  "session_id": "optional_custom_id"
 }
 
+# Get chat history
+GET /api/v1/chat/sessions/{session_id}/history?limit=20
+```
 
-GET http://34.28.155.240/api/v1/pipeline/status
-GET http://34.28.155.240/api/v1/pipeline/notifications
-GET http://34.28.155.240/api/v1/pipeline/history
-
-Alerts
-
-GET http://34.28.155.240/api/v1/alerts/recent
-GET http://34.28.155.240/api/v1/alerts/email-alerts
-GET http://34.28.155.240/api/v1/alerts/history
-
-SHAP (Explainability)
-
-GET http://34.28.155.240/api/v1/shap/current
-GET http://34.28.155.240/api/v1/shap/history
-
-Analytics
-
-GET http://34.28.155.240/api/v1/analytics/dashboard
-GET http://34.28.155.240/api/v1/analytics/trends/24
-
-Chat (LLM)
-
-POST http://34.28.155.240/api/v1/chat/sessions
-
-POST /api/v1/chat/sessions HTTP/1.1
-Host: 34.28.155.240
+### Text Chat
+```bash
+# Send text message
+POST /api/v1/chat/text
 Content-Type: application/json
-
-{ "session_id": "demo" }
-
-
-POST http://34.28.155.240/api/v1/chat/text
-
-POST /api/v1/chat/text HTTP/1.1
-Host: 34.28.155.240
-Content-Type: application/json
-
 {
-  "session_id": "demo",
-  "message": "Summarize latest sensor status"
+  "message": "What is the current air quality?",
+  "session_id": "default"
 }
+```
 
-
-POST http://34.28.155.240/api/v1/chat/voice
-multipart/form-data fields: audio (file), lang (e.g., en-IN), session_id
-
-POST /api/v1/chat/voice HTTP/1.1
-Host: 34.28.155.240
-Content-Type: multipart/form-data; boundary=BOUNDARY
-
---BOUNDARY
-Content-Disposition: form-data; name="session_id"
-
-demo
---BOUNDARY
-Content-Disposition: form-data; name="lang"
-
-en-IN
---BOUNDARY
-Content-Disposition: form-data; name="audio"; filename="sample.wav"
-Content-Type: audio/wav
-
-...binary wav data...
---BOUNDARY--
-
-
-GET http://34.28.155.240/api/v1/chat/sessions/<session_id>/history
-
-POST http://34.28.155.240/api/v1/chat/tts
-
-POST /api/v1/chat/tts HTTP/1.1
-Host: 34.28.155.240
-Content-Type: application/json
-
+**Response Structure:**
+```json
 {
-  "text": "System all green.",
-  "lang": "en-IN",
-  "voice": "default"
+  "success": true,
+  "data": {
+    "response": "Based on current sensor data...",
+    "status": "OK",
+    "findings": ["Air quality is within normal range"],
+    "recommendations": ["Continue monitoring"],
+    "confidence": 0.95,
+    "processing_time_ms": 1250,
+    "records_found": 15,
+    "sql_query": "SELECT * FROM sensor_data...",
+    "session_id": "default"
+  }
 }
+```
 
-Test & Docs
+### Voice Chat
+```bash
+# Send voice message (multipart form)
+POST /api/v1/chat/voice
+Content-Type: multipart/form-data
 
-GET http://34.28.155.240/api/v1/test/voice
-GET http://34.28.155.240/api/v1/test/services
-GET http://34.28.155.240/api/v1/docs
+Form fields:
+- file: audio file (.wav, .mp3, etc.)
+- lang: "en-IN" (optional, default: "en-IN")
+- session_id: "default" (optional)
+```
+
+**Response Structure:**
+Same as text chat plus:
+```json
+{
+  "transcribed_text": "What is the current air quality",
+  "input_type": "voice"
+}
+```
+
+### Text-to-Speech
+```bash
+# Generate TTS audio
+POST /api/v1/chat/tts
+Content-Type: application/json
+{
+  "text": "The system is operating normally",
+  "lang": "en",
+  "session_id": "default"
+}
+```
+
+**Supported Languages:**
+- `en` - English
+- `hi` - Hindi  
+- `te` - Telugu
+
+**Response:** Returns MP3 audio file
+
+## Test & Documentation Endpoints
+
+### Testing & Docs
+```bash
+# Test voice/TTS functionality (returns MP3)
+GET /api/v1/test/voice
+
+# Test service status
+GET /api/v1/test/services
+
+# Get API documentation
+GET /api/v1/docs
+
+# Test WebSocket emission
+POST /api/v1/test/emit
+Content-Type: application/json
+{
+  "event": "sensor_update",
+  "data": {
+    "msg": "test message",
+    "ts": "2024-01-01T12:00:00Z"
+  }
+}
+```
+
+## WebSocket Real-time Events
+
+### Connection Setup
+```javascript
+import io from 'socket.io-client';
+
+const socket = io('ws://34.28.155.240:7000');
+
+// Join alerts room to receive fire detection events
+socket.emit('join_alerts');
+
+// Connection status
+socket.on('status', (data) => {
+  console.log('Status:', data.message);
+});
+```
+
+### Event Types
+
+#### 1. sensor_update
+Emitted when new sensor data is available
+```javascript
+socket.on('sensor_update', (data) => {
+  console.log('Sensor Data:', data.sensor_data);
+  // data.execution_id, data.ts, data.source, data.success
+});
+```
+
+#### 2. ml_analysis
+Emitted when ML analysis completes
+```javascript
+socket.on('ml_analysis', (data) => {
+  console.log('ML Result:', data.ml_result);
+  // Contains: status, confidence, combined_risk_score, etc.
+});
+```
+
+#### 3. pattern_analysis
+Emitted when pattern detection runs
+```javascript
+socket.on('pattern_analysis', (data) => {
+  console.log('Pattern Analysis:', data.pattern_analysis);
+  // Contains: should_run_shap, trigger_reason, pattern_strength
+});
+```
+
+#### 4. shap_result
+Emitted when SHAP analysis is triggered and completed
+```javascript
+socket.on('shap_result', (data) => {
+  console.log('SHAP Analysis:', data.shap_result);
+  // data.shap_triggered will be true
+});
+```
+
+#### 5. llm_analysis
+Emitted when LLM analysis is performed
+```javascript
+socket.on('llm_analysis', (data) => {
+  console.log('LLM Analysis:', data.llm_analysis);
+  // data.llm_triggered indicates if LLM was used
+});
+```
+
+#### 6. fire_alert
+Emitted only when fire alert is required
+```javascript
+socket.on('fire_alert', (data) => {
+  console.log('FIRE ALERT!', data);
+  // data.alert_required will be true
+  // Contains: status, combined_risk_score, confidence
+});
+```
+
+#### 7. pipeline_summary
+Emitted after every pipeline cycle (every 15 seconds)
+```javascript
+socket.on('pipeline_summary', (data) => {
+  console.log('Pipeline Summary:', data);
+  // Contains: execution_time_ms, stage_timings, memory_usage_mb
+  // alert_required, ml_status, email_sent, whatsapp_sent, etc.
+});
+```
+
+## Pipeline Execution Flow
+
+The system runs automatically every 15 seconds with this flow:
+
+1. **Sensor Data Collection** → `sensor_update` event
+2. **ML Analysis** → `ml_analysis` event  
+3. **Pattern Detection** → `pattern_analysis` event
+4. **SHAP Analysis** (conditional) → `shap_result` event
+5. **LLM Analysis** (conditional) → `llm_analysis` event
+6. **Fire Alert** (if required) → `fire_alert` event
+7. **Pipeline Summary** → `pipeline_summary` event
+
+## Chatbot Flow
+
+### Text Chat Flow
+1. Create session: `POST /api/v1/chat/sessions`
+2. Send message: `POST /api/v1/chat/text`
+3. System processes through SQL agent
+4. Results explained via explainer service
+5. Response with findings and recommendations
+
+### Voice Chat Flow
+1. Record audio file
+2. Send via `POST /api/v1/chat/voice` (multipart)
+3. Google Speech-to-Text transcription
+4. Same SQL processing as text chat
+5. Response includes transcribed text
+
+### TTS Flow
+1. Send text: `POST /api/v1/chat/tts`
+2. System generates MP3 via Google TTS
+3. Download audio file
+
+## Error Handling
+
+All endpoints return standardized JSON responses:
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "data": { /* response data */ },
+  "message": "Operation completed successfully",
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": "Error description",
+  "timestamp": "2024-01-01T12:00:00.000Z"
+}
+```
+
+## Rate Limits & Constraints
+
+- **File Upload Limit**: 16MB
+- **Chat Session History**: 50 messages per session
+- **Pipeline Execution**: Every 15 seconds (automatic)
+- **Database Query Timeout**: Configurable per service
+- **WebSocket Room**: `fire_alerts` (default)
+
+## Authentication
+
+Currently, the API does not require authentication. All endpoints are publicly accessible.
+
+## CORS
+
+Cross-Origin Resource Sharing (CORS) is enabled for all origins (`*`) with support for GET, POST, PUT, DELETE, and OPTIONS methods.

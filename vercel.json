@@ -7,19 +7,19 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "http://34.28.155.240/api/v1/:path*"
+      "destination": "http://34.28.155.240:7000/api/v1/:path*"
     },
     {
       "source": "/metrics",
-      "destination": "http://34.28.155.240/metrics"
+      "destination": "http://34.28.155.240:7000/metrics"
     },
     {
       "source": "/health",
-      "destination": "http://34.28.155.240/health"
+      "destination": "http://34.28.155.240:7000/health"
     },
     {
       "source": "/ready",
-      "destination": "http://34.28.155.240/ready"
+      "destination": "http://34.28.155.240:7000/ready"
     }
     ],
     "headers": [

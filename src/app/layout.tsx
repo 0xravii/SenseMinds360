@@ -3,6 +3,8 @@ import { Inter, Roboto_Mono } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { PWAInstallBanner } from "@/components/pwa/PWAInstallBanner";
+import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
 import "./globals.css";
 
 const inter = Inter({
@@ -68,6 +70,8 @@ export default function RootLayout({
         <ErrorBoundary>
           <TooltipProvider>
             <AppShell>{children}</AppShell>
+            <PWAInstallBanner />
+            <ServiceWorkerRegistration />
           </TooltipProvider>
         </ErrorBoundary>
       </body>

@@ -3,10 +3,13 @@
 import { useEffect, useState } from 'react';
 import { AlertsPanel } from '@/components/alerts/AlertsPanel';
 import { EmergencyButton } from '@/components/emergency/EmergencyButton';
-import FloatingChatButton from '@/components/assistant/ChatFloatingButton';
-import { CollapsibleChatInterface } from '@/components/assistant/CollapsibleChatInterface';
 import { ServiceWorkerRegistration } from "@/components/pwa/ServiceWorkerRegistration";
 import { PWAOptimization } from "@/components/pwa/PWAOptimization";
+import { FloatingChatButton } from '@/components/assistant/ChatFloatingButton';
+import { CollapsibleChatInterface } from '@/components/assistant/CollapsibleChatInterface';
+import { WidgetNotification } from '@/components/widgets/WidgetNotification';
+import { PWAInstallBanner } from '@/components/pwa/PWAInstallBanner';
+
 import { apiService } from '@/services/api';
 import { realtimeService } from '@/services/realtime';
 import { Alert } from '@/types';
@@ -34,6 +37,7 @@ export default function Home() {
   const [isLoadingML, setIsLoadingML] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
+
   useEffect(() => {
     // Fetch initial data
     apiService.getRecentAlerts().then(response => {
@@ -51,25 +55,31 @@ export default function Home() {
     apiService.getSystemHealth().then(response => {
       console.log('System Health response:', response);
       setSystemStatus(response);
+      setIsLoadingSystem(false);
     }).catch(error => {
       console.error('Failed to fetch system status:', error);
       setSystemStatus(null);
+      setIsLoadingSystem(false);
     });
 
     apiService.getCurrentSensorData().then(response => {
       console.log('Sensor Data response:', response);
       setSensorData(response);
+      setIsLoadingSensors(false);
     }).catch(error => {
       console.error('Failed to fetch sensor data:', error);
       setSensorData(null);
+      setIsLoadingSensors(false);
     });
 
     apiService.getCurrentMLPredictions().then(response => {
       console.log('ML Predictions response:', response);
       setMlPredictions(response);
+      setIsLoadingML(false);
     }).catch(error => {
       console.error('Failed to fetch ML predictions:', error);
       setMlPredictions(null);
+      setIsLoadingML(false);
     });
 
     apiService.getSystemMetrics().then(response => {
@@ -167,7 +177,7 @@ export default function Home() {
 
 
 
-  const fireRiskScore = Math.round(Number(mlPredictions?.data?.combined_risk_score || mlPredictions?.combined_risk_score || 0) * 100);
+  const fireRiskScore = Math.round(Number(mlPredictions?.data?.combined_risk_score || mlPredictions?.data?.predictions?.overall_risk_score || mlPredictions?.data?.predictions?.fire_risk || 0) * 100);
   const fireRiskData = [{
     name: 'Risk', value: fireRiskScore,
     fill: fireRiskScore > 70 ? '#EF4444' : fireRiskScore > 40 ? '#F59E0B' : '#22C55E'
@@ -208,20 +218,26 @@ export default function Home() {
       !isMounted || theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'
     }`} suppressHydrationWarning>
       <ServiceWorkerRegistration />
-      <PWAOptimization />
-        {/* Theme Toggle Button */}
+      <PWAOptimization 
+        enablePreloading={true}
+        enableCaching={true}
+      />
+      
+      {/* PWA Install Banner */}
+      <PWAInstallBanner />
+        {/* Enhanced Theme Toggle Button */}
         <button
           onClick={toggleTheme}
-          className="fixed top-4 right-4 z-50 p-3 rounded-full bg-gray-200 dark:bg-gray-800 shadow-lg transition-all duration-300 hover:scale-110"
+          className="fixed top-6 right-6 z-50 p-4 rounded-2xl bg-gradient-to-r from-gray-100/90 to-gray-200/90 dark:from-gray-800/90 dark:to-gray-700/90 backdrop-blur-md border border-gray-300/50 dark:border-gray-600/50 shadow-2xl transition-all duration-500 hover:scale-110 hover:rotate-12 group"
           aria-label="Toggle theme"
           suppressHydrationWarning
         >
           {theme === 'dark' ? (
-            <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20" suppressHydrationWarning>
+            <svg className="w-6 h-6 text-yellow-400 group-hover:text-yellow-300 transition-colors duration-300 drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20" suppressHydrationWarning>
               <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" suppressHydrationWarning />
             </svg>
           ) : (
-            <svg className="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20" suppressHydrationWarning>
+            <svg className="w-6 h-6 text-blue-600 group-hover:text-blue-500 transition-colors duration-300 drop-shadow-lg" fill="currentColor" viewBox="0 0 20 20" suppressHydrationWarning>
               <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" suppressHydrationWarning />
             </svg>
           )}
@@ -246,60 +262,63 @@ export default function Home() {
       
       <div className="h-[3px] bg-gradient-to-r from-[#8B5CF6] to-[#F59E0B]" />
       
-      {/* Mobile Navigation Arrows - Standardized Sizing */}
-      <div className="fixed bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 z-50 lg:hidden flex items-center gap-1 sm:gap-2 bg-[#1A1F2E]/90 backdrop-blur-sm border border-[#3B82F6]/30 rounded-full px-2 sm:px-4 py-1 sm:py-2 shadow-lg">
+      {/* Enhanced Mobile Navigation */}
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 lg:hidden flex items-center gap-2 bg-gradient-to-r from-[#1A1F2E]/95 to-[#2A2F3E]/95 backdrop-blur-md border border-[#3B82F6]/20 rounded-2xl px-4 py-3 shadow-2xl">
         <button 
           onClick={() => scrollToSection('temperature-section')}
-          className="bg-[#3B82F6]/90 hover:bg-[#3B82F6] text-white rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center transition-all duration-200"
-          title="Go to Temperature"
+          className="bg-gradient-to-r from-[#3B82F6] to-[#4F46E5] hover:from-[#2563EB] hover:to-[#4338CA] text-white rounded-xl w-12 h-12 flex items-center justify-center transition-all duration-300 transform hover:scale-105 shadow-lg"
+          title="Temperature"
           suppressHydrationWarning
         >
-          <Thermometer className="w-3 h-3 sm:w-4 sm:h-4" suppressHydrationWarning />
+          <Thermometer className="w-5 h-5" suppressHydrationWarning />
         </button>
         <button 
           onClick={() => scrollToSection('alerts-section')}
-          className="bg-[#F59E0B]/90 hover:bg-[#F59E0B] text-white rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center transition-all duration-200"
-          title="Go to Alerts"
+          className="bg-gradient-to-r from-[#F59E0B] to-[#EAB308] hover:from-[#D97706] hover:to-[#CA8A04] text-white rounded-xl w-12 h-12 flex items-center justify-center transition-all duration-300 transform hover:scale-105 shadow-lg"
+          title="Alerts"
           suppressHydrationWarning
         >
-          <AlertTriangle className="w-3 h-3 sm:w-4 sm:h-4" suppressHydrationWarning />
+          <AlertTriangle className="w-5 h-5" suppressHydrationWarning />
         </button>
         <button 
           onClick={() => scrollToSection('sensors-section')}
-          className="bg-[#10B981]/90 hover:bg-[#10B981] text-white rounded-full w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center transition-all duration-200"
-          title="Go to Sensors"
+          className="bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#047857] hover:to-[#065F46] text-white rounded-xl w-12 h-12 flex items-center justify-center transition-all duration-300 transform hover:scale-105 shadow-lg"
+          title="Sensors"
           suppressHydrationWarning
         >
-          <Gauge className="w-3 h-3 sm:w-4 sm:h-4" suppressHydrationWarning />
+          <Gauge className="w-5 h-5" suppressHydrationWarning />
         </button>
       </div>
 
-      <div className="w-full mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10 py-4 sm:py-6 md:py-8 lg:py-12 max-w-7xl">
+      <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-6 sm:py-8 md:py-10 lg:py-12 pt-20 sm:pt-24">
         <motion.header 
           initial={{ opacity: 0, y: -20 }} 
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 sm:mb-8"
+          className="mb-8 sm:mb-10 md:mb-12"
         >
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <img 
-                src="/logo.png" 
-                alt="SenseMinds 360 Logo" 
-                className="h-10 w-10 sm:h-12 sm:w-12 lg:h-14 lg:w-14 xl:h-16 xl:w-16 object-contain"
-              />
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 lg:gap-8">
+            <div className="flex items-center gap-4 sm:gap-6">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-[#8B5CF6] to-[#F59E0B] rounded-2xl blur-sm opacity-30"></div>
+                <img 
+                  src="/logo.png" 
+                  alt="SenseMinds 360 Logo" 
+                  className="relative h-12 w-12 sm:h-16 sm:w-16 lg:h-18 lg:w-18 xl:h-20 xl:w-20 object-contain rounded-2xl"
+                />
+              </div>
               <div>
-                <h1 className="text-2xl xs:text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold bg-gradient-to-r from-[#8B5CF6] to-[#F59E0B] bg-clip-text text-transparent leading-tight">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold bg-gradient-to-r from-[#8B5CF6] via-[#A78BFA] to-[#F59E0B] bg-clip-text text-transparent leading-tight">
                   SenseMinds 360
                 </h1>
-                <p className="text-[#9CA3AF] mt-1 text-sm sm:text-base">Unified Intelligence for Real-World Infrastructure</p>
+                <p className="text-[#9CA3AF] mt-2 text-base sm:text-lg md:text-xl font-medium">Unified Intelligence for Real-World Infrastructure</p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            <div className="flex flex-wrap gap-3 sm:gap-4">
               {statusPill(systemStatus?.status || 'NORMAL')}
               {statusPill(mlPredictions?.data?.status || mlPredictions?.status || 'NORMAL')}
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full text-[10px] sm:text-xs bg-[#8B5CF6]/10 text-[#A78BFA] backdrop-blur-sm">
-                <Shield className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> 
-                <span className="uppercase tracking-wider font-medium">Secure</span>
+              <span className="inline-flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-3 rounded-2xl text-sm sm:text-base bg-gradient-to-r from-[#8B5CF6]/20 to-[#A78BFA]/20 text-[#A78BFA] backdrop-blur-md border border-[#8B5CF6]/30 shadow-lg">
+                <Shield className="h-4 w-4 sm:h-5 sm:w-5" /> 
+                <span className="uppercase tracking-wider font-semibold">Secure</span>
               </span>
             </div>
           </div>
@@ -308,22 +327,26 @@ export default function Home() {
         <motion.div 
           initial={{ opacity: 0, scale: 0.98 }} 
           animate={{ opacity: 1, scale: 1 }}
-          className="mb-6"
+          className="mb-8 sm:mb-10"
         >
-          <Card className="glass glow">
-            <CardContent className="p-5">
+          <Card className="glass glow border-0 overflow-hidden">
+            <CardContent className="p-6 sm:p-8">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4 sm:gap-6">
                   <div className="relative">
-                    <span className="absolute inline-flex h-3 w-3 rounded-full bg-emerald-400 animate-ping opacity-75"></span>
-                    <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-400"></span>
+                    <div className="absolute inset-0 bg-emerald-400/20 rounded-full animate-pulse"></div>
+                    <span className="absolute inline-flex h-4 w-4 sm:h-5 sm:w-5 rounded-full bg-emerald-400 animate-ping opacity-75"></span>
+                    <span className="relative inline-flex h-4 w-4 sm:h-5 sm:w-5 rounded-full bg-emerald-400 shadow-lg"></span>
                   </div>
                   <div>
-                    <span className="text-[#9CA3AF] text-xs uppercase tracking-wide">AI System Status</span>
-                    <div className="text-emerald-300 font-semibold">Active</div>
+                    <span className="text-[#9CA3AF] text-sm sm:text-base uppercase tracking-wider font-medium">AI System Status</span>
+                    <div className="text-emerald-300 font-bold text-lg sm:text-xl mt-1">Active & Learning</div>
                   </div>
                 </div>
-                <Brain className="w-5 h-5 text-[#8B5CF6]" />
+                <div className="relative">
+                  <div className="absolute inset-0 bg-[#8B5CF6]/20 rounded-2xl blur-sm"></div>
+                  <Brain className="relative w-8 h-8 sm:w-10 sm:h-10 text-[#8B5CF6] drop-shadow-lg" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -333,9 +356,9 @@ export default function Home() {
           variants={container} 
           initial="hidden" 
           animate="show" 
-          className="grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-3 md:gap-4 lg:gap-5 xl:gap-6"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 sm:gap-4 md:gap-5 lg:gap-6"
         >
-          <motion.div variants={item} className="lg:col-span-3 xl:col-span-3 space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-5">
+          <motion.div variants={item} className="sm:col-span-2 lg:col-span-3 xl:col-span-3 space-y-3 sm:space-y-4 md:space-y-5">
             <Card className="glass glow">
               <CardContent className="p-4 sm:p-5 lg:p-6">
                 <div className="flex items-center justify-between mb-4">
@@ -407,7 +430,7 @@ export default function Home() {
             </div>
           </motion.div>
 
-          <motion.div variants={item} className="lg:col-span-6 xl:col-span-6 space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-5">
+          <motion.div variants={item} className="sm:col-span-2 lg:col-span-6 xl:col-span-6 space-y-4 sm:space-y-5 md:space-y-6">
             <Card id="temperature-section" className="glass glow">
               <CardHeader className="pb-2">
                 <CardTitle className="text-[#9CA3AF] text-sm uppercase tracking-wide flex items-center justify-between font-semibold">
@@ -435,25 +458,72 @@ export default function Home() {
                 </div>
               </CardContent>
             </Card>
-            <div id="sensors-section" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-6 gap-2 sm:gap-3 md:gap-4 lg:gap-4 xl:gap-5">
+            <div id="sensors-section" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5">
               {[
-                { title: 'Temperature', value: sensorData?.data?.dht_temp_c ? Math.round(Number(sensorData.data.dht_temp_c) * 10) / 10 : '0', unit: '°C', icon: Thermometer, accent: '#EF4444' },
-                { title: 'Humidity', value: sensorData?.data?.dht_humidity_pct ? Math.round(Number(sensorData.data.dht_humidity_pct)) : '0', unit: '%', icon: Droplets, accent: '#60A5FA' },
-                { title: 'CO₂', value: sensorData?.data?.co2_ppm ? Math.round(Number(sensorData.data.co2_ppm)) : '0', unit: 'ppm', icon: Wind, accent: '#22C55E' },
-                { title: 'TVOC', value: sensorData?.data?.tvoc_ppb ? Math.round(Number(sensorData.data.tvoc_ppb)) : '0', unit: 'ppb', icon: Zap, accent: '#8B5CF6' },
-                { title: 'Light', value: sensorData?.data?.light_adc ? Math.round(Number(sensorData.data.light_adc)) : '0', unit: 'lux', icon: Activity, accent: '#F59E0B' },
-                { title: 'Distance', value: sensorData?.data?.ultrasonic_cm ? Math.round(Number(sensorData.data.ultrasonic_cm) * 10) / 10 : '0', unit: 'cm', icon: Users, accent: '#EC4899' },
+                { 
+                  title: 'Temperature', 
+                  value: sensorData?.sensors?.find(s => s.type === 'temperature')?.value ? Math.round(Number(sensorData.sensors.find(s => s.type === 'temperature').value) * 10) / 10 : '0', 
+                  unit: '°C', 
+                  icon: Thermometer, 
+                  accent: '#EF4444' 
+                },
+                { 
+                  title: 'Humidity', 
+                  value: sensorData?.sensors?.find(s => s.type === 'humidity')?.value ? Math.round(Number(sensorData.sensors.find(s => s.type === 'humidity').value)) : '0', 
+                  unit: '%', 
+                  icon: Droplets, 
+                  accent: '#60A5FA' 
+                },
+                { 
+                  title: 'CO₂', 
+                  value: sensorData?.sensors?.find(s => s.type === 'co2')?.value ? Math.round(Number(sensorData.sensors.find(s => s.type === 'co2').value)) : '0', 
+                  unit: 'ppm', 
+                  icon: Wind, 
+                  accent: '#22C55E' 
+                },
+                { 
+                  title: 'TVOC', 
+                  value: sensorData?.sensors?.find(s => s.type === 'tvoc')?.value ? Math.round(Number(sensorData.sensors.find(s => s.type === 'tvoc').value)) : '0', 
+                  unit: 'ppb', 
+                  icon: Zap, 
+                  accent: '#8B5CF6' 
+                },
+                { 
+                  title: 'Light', 
+                  value: sensorData?.sensors?.find(s => s.type === 'light')?.value ? Math.round(Number(sensorData.sensors.find(s => s.type === 'light').value)) : '0', 
+                  unit: 'lux', 
+                  icon: Activity, 
+                  accent: '#F59E0B' 
+                },
+                { 
+                  title: 'Distance', 
+                  value: sensorData?.sensors?.find(s => s.type === 'distance')?.value ? Math.round(Number(sensorData.sensors.find(s => s.type === 'distance').value) * 10) / 10 : '0', 
+                  unit: 'cm', 
+                  icon: Users, 
+                  accent: '#EC4899' 
+                },
               ].map((sensor) => (
-                <motion.div key={sensor.title} variants={item} whileHover={{ y: -2, transition: { type: 'spring', stiffness: 300 } }} whileTap={{ scale: 0.98 }}>
-                  <Card className="glass glow h-full">
-                    <CardContent className="p-3 sm:p-4" suppressHydrationWarning>
+                <motion.div key={sensor.title} variants={item} whileHover={{ y: -4, scale: 1.02, transition: { type: 'spring', stiffness: 400, damping: 25 } }} whileTap={{ scale: 0.96 }}>
+                  <Card className="glass glow h-full border-0 overflow-hidden group">
+                    <CardContent className="p-4 sm:p-5 md:p-6 relative" suppressHydrationWarning>
+                      <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity duration-300" style={{ background: `linear-gradient(135deg, ${sensor.accent}20, transparent)` }}></div>
                       {isLoadingSensors ? (
-                      <div className="animate-pulse space-y-2"><div className="h-5 w-5 rounded bg-[var(--border-color)]" /><div className="h-7 w-16 bg-[var(--border-color)] rounded" /><div className="h-3 w-20 bg-[var(--border-color)] rounded" /></div>
-                    ) : (
+                        <div className="animate-pulse space-y-3">
+                          <div className="h-6 w-6 rounded-lg bg-[var(--border-color)]" />
+                          <div className="h-8 w-20 bg-[var(--border-color)] rounded-lg" />
+                          <div className="h-4 w-24 bg-[var(--border-color)] rounded" />
+                        </div>
+                      ) : (
                         <>
-                          <div className="flex items-center justify-between mb-2"><sensor.icon className="w-4 h-4" style={{ color: sensor.accent }} /><span className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wider">{sensor.unit}</span></div>
-                           <div className="font-bold text-[var(--text-primary)] metric temperature-display text-2xl lg:text-3xl">{sensor.value}</div>
-                     <div className="text-sm sm:text-base text-[var(--text-secondary)] uppercase tracking-wide mt-1 font-medium">{sensor.title}</div>
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="relative">
+                              <div className="absolute inset-0 rounded-xl blur-sm opacity-30" style={{ backgroundColor: sensor.accent }}></div>
+                              <sensor.icon className="relative w-5 h-5 sm:w-6 sm:h-6 drop-shadow-lg" style={{ color: sensor.accent }} />
+                            </div>
+                            <span className="text-xs sm:text-sm text-[var(--text-secondary)] uppercase tracking-wider font-medium px-2 py-1 rounded-lg bg-[var(--border-color)]">{sensor.unit}</span>
+                          </div>
+                          <div className="font-bold text-[var(--text-primary)] metric temperature-display text-2xl sm:text-3xl lg:text-4xl mb-2 group-hover:scale-105 transition-transform duration-300">{sensor.value}</div>
+                          <div className="text-sm sm:text-base text-[var(--text-secondary)] uppercase tracking-wide font-semibold">{sensor.title}</div>
                         </>
                       )}
                     </CardContent>
@@ -465,7 +535,7 @@ export default function Home() {
 
 
 
-          <motion.div id="alerts-section" variants={item} className="lg:col-span-12 xl:col-span-3 space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-5">
+          <motion.div id="alerts-section" variants={item} className="sm:col-span-2 lg:col-span-12 xl:col-span-3 space-y-4 sm:space-y-5 md:space-y-6">
             <div className="glass glow border-2 border-[#F59E0B]/30 bg-[#1A1F2E]/90 rounded-2xl p-4 sm:p-5 lg:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-[#FDE68A] text-sm uppercase tracking-wide flex items-center gap-2 font-semibold" suppressHydrationWarning>
@@ -500,8 +570,8 @@ export default function Home() {
               <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-2 xs:gap-3 sm:gap-4 md:gap-4 lg:gap-5 xl:gap-6">
                 {[
                   { title: 'Confidence', value: mlPredictions?.data?.confidence ? Math.round(Number(mlPredictions.data.confidence) * 100) : '0', unit: '%', icon: Brain, color: 'text-[#60A5FA]' },
-                  { title: 'Anomaly Score', value: mlPredictions?.data?.anomaly_score ? Number(mlPredictions.data.anomaly_score).toFixed(3) : '0.000', unit: '', icon: AlertTriangle, color: 'text-[#F59E0B]' },
-                  { title: 'Risk Score', value: mlPredictions?.data?.combined_risk_score ? Number(mlPredictions.data.combined_risk_score).toFixed(3) : '0.000', unit: '', icon: Zap, color: 'text-[#22C55E]' },
+                  { title: 'Anomaly Score', value: mlPredictions?.data?.predictions?.temperature_anomaly ? Number(mlPredictions.data.predictions.temperature_anomaly).toFixed(3) : '0.000', unit: '', icon: AlertTriangle, color: 'text-[#F59E0B]' },
+                  { title: 'Risk Score', value: mlPredictions?.data?.predictions?.overall_risk_score ? Number(mlPredictions.data.predictions.overall_risk_score).toFixed(3) : '0.000', unit: '', icon: Zap, color: 'text-[#22C55E]' },
                   { title: 'Source', value: mlPredictions?.data?.source ?? 'XGB+IF+Thresholds', unit: '', icon: Sparkles, color: 'text-[#8B5CF6]' },
                 ].map((metric, index) => (
                   <motion.div key={metric.title} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * index }} whileHover={{ y: -2 }}>
@@ -522,41 +592,24 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Recent Logs Section */}
-          <div className="glass p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-[#60A5FA]" />
-                <h2 className="text-lg font-semibold">Recent System Logs</h2>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {/* Placeholder for 5 recent logs */}
-              {[1, 2, 3, 4, 5].map((index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-black/20 border border-white/5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-green-400"></div>
-                    <span className="text-sm text-gray-300">System operational check #{index}</span>
-                  </div>
-                  <span className="text-xs text-gray-500">{new Date(Date.now() - index * 300000).toLocaleTimeString()}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+
         </motion.div>
+
+
       </div>
 
       {/* Floating Chat Components */}
-       <FloatingChatButton 
-         isOpen={isChatOpen}
-         onClick={() => setIsChatOpen(!isChatOpen)}
-       />
-       
-       <CollapsibleChatInterface 
-         isOpen={isChatOpen}
-         onClose={() => setIsChatOpen(false)}
-       />
-
+      <FloatingChatButton 
+        isOpen={isChatOpen} 
+        onClick={() => setIsChatOpen(!isChatOpen)} 
+      />
+      <CollapsibleChatInterface 
+        isOpen={isChatOpen} 
+        onClose={() => setIsChatOpen(false)} 
+      />
+      
+      {/* Widget Notification */}
+      <WidgetNotification />
 
     </div>
   );
