@@ -1,7 +1,7 @@
 import { Alert, LogEntry, SystemStatus, AlertSeverity, AlertType, LogLevel, ServiceHealthStatus, SystemHealth } from '@/types';
 import { io, Socket } from 'socket.io-client';
 
-const REALTIME_WS_URL = process.env.NEXT_PUBLIC_REALTIME_WS_URL || 'http://34.121.143.178:5000';
+const REALTIME_WS_URL = process.env.NEXT_PUBLIC_REALTIME_WS_URL || 'ws://34.28.155.240:7000';
 
 type RealtimeEvent = 
   | { type: 'new_alert'; payload: Alert }
@@ -16,94 +16,36 @@ class RealtimeService {
 
   private isConnected = false;
   private socket: Socket | null = null;
-  private connectionAttempts = 0;
-  private maxConnectionAttempts = 3;
 
   constructor() {
-    console.log('REALTIME_WS_URL:', REALTIME_WS_URL);
-    console.log('Connecting to real WebSocket server...');
-    this.connectSocketIO();
-  }
-  
-  private connectSocketIO() {
-    if (this.connectionAttempts >= this.maxConnectionAttempts) {
-      console.warn('Max WebSocket connection attempts reached, using mock data mode');
-      this.simulateMockEvents();
-      return;
-    }
-
-    this.connectionAttempts++;
+    this.socket = io(REALTIME_WS_URL);
     
-    try {
-      this.socket = io(REALTIME_WS_URL, {
-        transports: ['websocket', 'polling'],
-        timeout: 10000, // 10 second timeout
-        reconnection: true,
-        reconnectionDelay: 2000,
-        reconnectionDelayMax: 5000,
-        reconnectionAttempts: 2,
-        forceNew: true
-      });
-      
-      this.socket.on('connect', () => {
-        console.log('✅ Connected to realtime server');
-        this.isConnected = true;
-        this.connectionAttempts = 0; // Reset on successful connection
-      });
-      
-      this.socket.on('message', (data) => {
-        console.log('Socket.IO message received:', data);
-          
-        // Handle the correct events from the API documentation
-        if (data.event === 'connect') {
-          console.log('Socket.IO connected with ID:', data.sid);
-        } else if (data.event === 'disconnect') {
-          console.log('Socket.IO disconnected');
-          this.isConnected = false;
-        } else if (data.event === 'fire_alert') {
-          console.log('Alert received:', data.data);
-          this.emit('new_alert', data.data);
-        } else if (data.event === 'sensor_update') {
-          console.log('Sensor update received:', data.data);
-          this.emit('system_status_update', data.data);
-        } else {
-          // Handle any other events
-          console.log('Unknown event received:', data);
-        }
-      });
-      
-      this.socket.on('connect_error', (error) => {
-        console.warn('⚠️ WebSocket connection unavailable, using fallback mode');
-        this.isConnected = false;
-        // Don't log full error details to reduce console noise
-        if (this.connectionAttempts >= this.maxConnectionAttempts) {
-          this.simulateMockEvents();
-        }
-      });
-      
-      this.socket.on('disconnect', (reason) => {
-        console.log('Socket.IO disconnected:', reason);
-        this.isConnected = false;
-        
-        // Only attempt manual reconnection for certain disconnect reasons
-        if (reason === 'io server disconnect' || reason === 'transport close') {
-          console.log('Server initiated disconnect - attempting reconnection...');
-          setTimeout(() => {
-            if (!this.isConnected) {
-              console.log('Attempting to reconnect Socket.IO...');
-              this.connectSocketIO();
-            }
-          }, 5000);
-        } else {
-          console.log('Client initiated disconnect or network error - relying on auto-reconnection');
-        }
-      });
-    } catch (error) {
-      console.error('Error connecting to Socket.IO:', error);
-      // Set a flag to indicate connection failed
+    this.socket.on('connect', () => {
+      console.log('Connected to realtime server');
+      this.isConnected = true;
+    });
+    
+    this.socket.on('sensor_update', (data) => {
+      this.emit('system_status_update', data);
+    });
+    
+    this.socket.on('ml_analysis', (data) => {
+      this.emit('system_status_update', data);
+    });
+    
+    this.socket.on('fire_alert', (data) => {
+      this.emit('new_alert', data);
+    });
+    
+    this.socket.on('connect_error', () => {
+      console.warn('WebSocket connection unavailable');
       this.isConnected = false;
-      console.warn('Socket.IO connection failed - this is expected if the remote WebSocket server is not running');
-    }
+    });
+    
+    this.socket.on('disconnect', () => {
+      console.log('Socket.IO disconnected');
+      this.isConnected = false;
+    });
   }
 
   on(eventType: 'new_alert', listener: (payload: Alert) => void): void;
@@ -142,19 +84,12 @@ class RealtimeService {
     }
   }
 
-  private simulateMockEvents(): void {
-    console.log('Starting mock event simulation...');
-    // Simulate periodic mock events when WebSocket is unavailable
-    setInterval(() => {
-      if (!this.isConnected) {
-        // Simulate mock alerts or system updates
-        console.log('Simulating mock events (WebSocket unavailable)');
-      }
-    }, 30000); // Every 30 seconds
-  }
+
 
   disconnect(): void {
     if (this.socket) {
+      // Leave alerts room before disconnecting
+      this.socket.emit('leave_alerts');
       this.socket.disconnect();
     }
     this.isConnected = false;

@@ -43,6 +43,15 @@
   --sidebar-accent-foreground: #111827;
   --sidebar-border: #E5E7EB;
   --sidebar-ring: #3B82F6;
+  
+  /* Dashboard specific variables */
+  --bg-primary: #0B0F19;
+  --bg-secondary: #1A1F2E;
+  --text-primary: #E6EDF3;
+  --text-secondary: #9CA3AF;
+  --border-color: rgba(255, 255, 255, 0.05);
+  --glass-bg: rgba(18, 19, 28, 0.95);
+  --shadow-color: rgba(0, 0, 0, 0.4);
 }
 
 .light {

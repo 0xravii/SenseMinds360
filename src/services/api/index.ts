@@ -1,9 +1,11 @@
 
 
 import { Alert, LogEntry, User, Incident, SystemStatus, AlertSeverity, AlertType, LogLevel, ServiceHealthStatus, SystemHealth } from '@/types';
+import { fallbackApiService } from './fallback-api';
 
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://34.28.155.240/api/v1';
+// SenseMinds 360 API Configuration
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://34.28.155.240:7000/api/v1';
 
 
 // Response types for API endpoints
@@ -118,13 +120,6 @@ const apiClient = {
       return data;
     } catch (error) {
       console.error(`Failed to fetch from ${path}:`, error);
-      
-      // In development, allow mock data fallback
-      if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true') {
-        console.warn('Using mock data for development');
-        return null as TResponse;
-      }
-      
       throw error;
     }
   },
@@ -175,13 +170,20 @@ import { supabase } from '@/lib/supabase';
 export const apiService = {
   // System endpoints
   getSystemHealth: async (): Promise<SystemHealth> => {
-    const response = await apiClient.get<SystemHealthResponse>('/system/health');
-    return response.data;
+    try {
+      const response = await apiClient.get<SystemHealthResponse>('/system/health');
+      return response.data;
+    } catch (error) {
+      console.warn('Primary API unavailable, using fallback for system health');
+      return await fallbackApiService.getSystemHealth();
+    }
   },
 
   getSystemMetrics: async (): Promise<{ cpuUsage: number; memoryUsage: number; servicesHealthy: number; servicesTotal: number; uptime: number; memoryUsageMB: number }> => {
     try {
-      const response = await fetch('http://34.28.155.240/metrics');
+      // Use the configured API base URL with proxy support
+      const metricsUrl = 'http://34.28.155.240:7000/metrics';
+      const response = await fetch(metricsUrl);
       const text = await response.text();
       
       // Parse metrics from Prometheus format
@@ -211,15 +213,8 @@ export const apiService = {
       
       return metrics;
     } catch (error) {
-      console.error('Error fetching system metrics:', error);
-      return {
-        cpuUsage: 0,
-        memoryUsage: 0,
-        memoryUsageMB: 0,
-        servicesHealthy: 8,
-        servicesTotal: 8,
-        uptime: 0
-      };
+      console.warn('Primary metrics API unavailable, using fallback');
+      return await fallbackApiService.getSystemMetrics();
     }
   },
 
@@ -232,7 +227,14 @@ export const apiService = {
   },
 
   // Sensor endpoints
-  getCurrentSensorData: () => apiClient.get<SensorData>('/sensors/current'),
+  getCurrentSensorData: async () => {
+    try {
+      return await apiClient.get<SensorData>('/sensors/current');
+    } catch (error) {
+      console.warn('Primary API unavailable, using fallback for sensor data');
+      return await fallbackApiService.getCurrentSensorData();
+    }
+  },
   getSensorHistory: (hours: number) => apiClient.get<SensorData[]>(`/sensors/history/${hours}`),
 
   // ML endpoints
@@ -251,12 +253,17 @@ export const apiService = {
 
   // Alert endpoints
   getAlerts: async (hours: number = 24, limit: number = 20): Promise<Alert[]> => {
-    const response = await apiClient.get<any>(`/alerts/email-alerts?hours=${hours}&limit=${limit}`);
+    const response = await apiClient.get<any>(`/alerts/email?hours=${hours}&limit=${limit}`);
     return response.data?.email_alerts || [];
   },
-  getRecentAlerts: async (hours: number = 24, limit: number = 20): Promise<any> => {
-    const response = await apiClient.get<any>(`/alerts/recent?hours=${hours}&limit=${limit}`);
-    return response.data; // Returns the full response including data.alerts, status, message
+  getRecentAlerts: async (hours: number = 24, limit: number = 20): Promise<Alert[]> => {
+    try {
+      const response = await apiClient.get<Alert[]>(`/alerts/recent?hours=${hours}&limit=${limit}`);
+      return response;
+    } catch (error) {
+      console.warn('Primary API unavailable, using fallback for recent alerts');
+      return await fallbackApiService.getRecentAlerts(hours, limit);
+    }
   },
   getAlertsHistory: async (days: number = 7): Promise<Alert[]> => {
     return apiClient.get<Alert[]>(`/alerts/history?days=${days}`);
@@ -271,25 +278,48 @@ export const apiService = {
   getTrends: (hours: number) => apiClient.get<any>(`/analytics/trends/${hours}`),
 
   // Chat endpoints
-  sendChatQuery: (message: string, sessionId: string = 'demo') => apiClient.post<any, { message: string, session_id: string }>('/chat/text', { message, session_id: sessionId }),
-  sendVoiceMessage: (formData: FormData) => apiClient.post<any, FormData>('/chat/voice', formData),
-  createChatSession: () => apiClient.post<ChatSession, {}>('/chat/sessions', {}),
-  getChatHistory: (sessionId: string) => apiClient.get<any>(`/chat/sessions/${sessionId}/history`),
+  sendChatQuery: (message: string, sessionId: string = 'demo') => apiClient.post<any, { message: string, session_id: string }>('/chatbot/text', { message, session_id: sessionId }),
+  sendVoiceMessage: (formData: FormData) => apiClient.post<any, FormData>('/chatbot/voice', formData),
+  createChatSession: () => apiClient.post<ChatSession, {}>('/chatbot/sessions', {}),
+  getChatHistory: (sessionId: string) => apiClient.get<any>(`/chatbot/sessions/${sessionId}/history`),
   generateTTS: async (text: string, lang: string = 'en-IN', voice: string = 'default') => {
     try {
+      // Import audio cache service dynamically to avoid circular dependencies
+      const { audioCacheService } = await import('@/services/audiocache');
+      
+      // Check cache first
+      const cachedAudio = await audioCacheService.getCachedAudio(text, lang);
+      if (cachedAudio) {
+        return cachedAudio;
+      }
+      
+      console.log('Generating TTS for:', text.substring(0, 50), 'Language:', lang);
       const response = await fetch(`${API_BASE_URL}/chat/tts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ 
+          text, 
+          lang, 
+          voice 
+        }),
       });
       
       if (!response.ok) {
-        throw new Error(`TTS API error: ${response.status}`);
+        throw new Error(`TTS API error: ${response.status} - ${response.statusText}`);
       }
       
       const audioBlob = await response.blob();
+      
+      // Cache the audio for future use
+      try {
+        await audioCacheService.cacheAudio(text, lang, audioBlob);
+      } catch (cacheError) {
+        console.warn('Failed to cache audio:', cacheError);
+        // Don't fail the request if caching fails
+      }
+      
       return audioBlob;
     } catch (error) {
       console.error('TTS generation failed:', error);
@@ -311,48 +341,7 @@ export const apiService = {
 
   // Log endpoints
   getLogs: async (): Promise<LogEntry[]> => {
-    try {
-      return await apiClient.get<LogEntry[]>('/logs');
-    } catch (error) {
-      console.warn('Failed to fetch logs, using mock data:', error);
-      return [
-        {
-          id: 'log-1',
-          timestamp: new Date(Date.now() - 300000).toISOString(),
-          level: 'info',
-          message: 'System health check completed',
-          source: 'health-monitor'
-        },
-        {
-          id: 'log-2',
-          timestamp: new Date(Date.now() - 600000).toISOString(),
-          level: 'warn',
-          message: 'High temperature detected in zone 3',
-          source: 'sensor-monitor'
-        },
-        {
-          id: 'log-3',
-          timestamp: new Date(Date.now() - 900000).toISOString(),
-          level: 'error',
-          message: 'Connection timeout to external service',
-          source: 'api-gateway'
-        },
-        {
-          id: 'log-4',
-          timestamp: new Date(Date.now() - 1200000).toISOString(),
-          level: 'info',
-          message: 'Alert processing completed',
-          source: 'alert-processor'
-        },
-        {
-          id: 'log-5',
-          timestamp: new Date(Date.now() - 1500000).toISOString(),
-          level: 'debug',
-          message: 'Background task executed successfully',
-          source: 'scheduler'
-        }
-      ];
-    }
+    return apiClient.get<LogEntry[]>('/logs');
   },
 };
 

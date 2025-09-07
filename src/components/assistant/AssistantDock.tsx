@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Send, MessageSquare, Bot, Mic, Plus, History } from 'lucide-react';
 import { apiService } from '@/services/api';
-import { VoiceChat } from '@/components/voice/VoiceChat';
+import VoiceChat from '@/components/voice/VoiceChat';
 
 type Message = {
   id: string;
